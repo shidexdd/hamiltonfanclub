@@ -1,0 +1,81 @@
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+-- Tool Configuration
+local TARGET_DISTANCE = 500 -- Maximum distance to target
+local AIM_SPEED = 10 -- How quickly the tool aims at the target
+
+-- Tool
+local tool = script.Parent
+local handle = tool:WaitForChild("Handle")
+local equipped = false
+local aiming = false
+local target = nil
+
+-- Function to find the nearest player's head
+local function findNearestPlayerHead()
+    local nearestPlayer = nil
+    local minDistance = TARGET_DISTANCE
+    local localPlayer = Players.LocalPlayer
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local character = player.Character
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            local head = character:FindFirstChild("Head")
+            
+            if humanoidRootPart and head then
+                local distance = (humanoidRootPart.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+                if distance < minDistance then
+                    nearestPlayer = head
+                    minDistance = distance
+                end
+            end
+        end
+    end
+
+    return nearestPlayer
+end
+
+-- Function to aim at the target
+local function aimAtTarget()
+    if not target or not target:IsDescendantOf(game) then
+        aiming = false
+        return
+    end
+
+    local aimDirection = (target.Position - handle.Position).Unit
+    local newCFrame = handle.CFrame:Lerp(CFrame.lookAt(handle.Position, handle.Position + aimDirection), AIM_SPEED)
+
+    handle.CFrame = newCFrame
+
+    wait(0.1) -- Adjust the wait time as necessary
+end
+
+-- Equip tool event
+tool.Equipped:Connect(function()
+    equipped = true
+end)
+
+-- Unequip tool event
+tool.Unequipped:Connect(function()
+    equipped = false
+    aiming = false
+end)
+
+-- Mouse input event
+UserInputService.InputBegan:Connect(function(input)
+    if equipped and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        aiming = true
+        target = findNearestPlayerHead()
+    end
+end)
+
+-- Main loop
+while true do
+    if equipped and aiming then
+        aimAtTarget()
+    end
+    wait()
+end
